@@ -1,12 +1,32 @@
 {
   "name": "@nextdriveioe/github-action-trigger-mcp",
   "version": "0.1.0",
-  "description": "A Model Context Protocol server",
-  "private": true,
+  "description": "A Model Context Protocol server for GitHub Actions integration",
+  "private": false,
   "type": "module",
   "bin": {
     "@nextdriveioe/github-action-trigger-mcp": "./build/index.js"
   },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "claude",
+    "github-actions",
+    "github-api",
+    "workflow",
+    "ci-cd",
+    "github"
+  ],
+  "homepage": "https://github.com/nextdriveioe/github-action-trigger-mcp",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nextdriveioe/github-action-trigger-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nextdriveioe/github-action-trigger-mcp/issues"
+  },
+  "author": "NextDrive IoE Team",
+  "license": "MIT",
   "files": [
     "build"
   ],
