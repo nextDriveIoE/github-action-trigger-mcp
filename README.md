@@ -31,6 +31,16 @@ A Model Context Protocol server
     - `ref`：Git 引用（分支、標籤或提交 SHA，默認為 'main'）
     - `token`：GitHub 個人訪問令牌（可選）
   - 返回 Action 的詳細信息，包括名稱、描述、作者、輸入參數（及其是否必填）等
+- `trigger_github_action` - 觸發 GitHub 工作流程並傳遞相關參數
+  - 必需參數：
+    - `owner`：倉庫擁有者（用戶名或組織）
+    - `repo`：倉庫名稱
+    - `workflow_id`：要觸發的工作流程 ID 或文件名
+  - 可選參數：
+    - `ref`：觸發工作流程的 Git 引用（默認為 'main'）
+    - `inputs`：傳遞給工作流程的輸入參數（必須匹配工作流程定義的輸入）
+    - `token`：GitHub 個人訪問令牌（必須具有 workflow 權限範圍）
+  - 返回工作流程運行信息，包括狀態、URL 等
 
 ### 提示
 - `summarize_notes` - 生成所有存儲筆記的摘要
@@ -213,3 +223,41 @@ Inspector 將提供一個 URL 以在您的瀏覽器中訪問調試工具。
   }
 }
 ```
+
+### 觸發 GitHub 工作流程
+
+使用 `trigger_github_action` 工具觸發 GitHub 工作流程：
+
+```json
+{
+  "owner": "用戶名或組織名",
+  "repo": "倉庫名稱",
+  "workflow_id": "ci.yml",
+  "inputs": {
+    "deploy_environment": "production",
+    "debug_enabled": "true"
+  }
+}
+```
+
+返回示例：
+
+```json
+{
+  "success": true,
+  "message": "Workflow dispatch event triggered successfully",
+  "run": {
+    "id": 12345678,
+    "url": "https://github.com/owner/repo/actions/runs/12345678",
+    "status": "queued",
+    "conclusion": null,
+    "created_at": "2025-03-19T06:45:12Z",
+    "triggered_by": "API"
+  }
+}
+```
+
+注意：觸發工作流程需要：
+1. 工作流程必須配置為支援 `workflow_dispatch` 事件
+2. GitHub 令牌必須具有 `workflow` 範圍的權限
+3. 傳遞的輸入參數必須與工作流程中定義的參數匹配

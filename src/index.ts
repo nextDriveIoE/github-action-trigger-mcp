@@ -222,6 +222,40 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           },
           required: ["owner", "repo"]
         }
+      },
+      {
+        name: "trigger_github_action",
+        description: "Trigger a GitHub workflow dispatch event with custom inputs",
+        inputSchema: {
+          type: "object",
+          properties: {
+            owner: {
+              type: "string",
+              description: "Owner of the repository (username or organization)"
+            },
+            repo: {
+              type: "string",
+              description: "Name of the repository"
+            },
+            workflow_id: {
+              type: "string",
+              description: "The ID or filename of the workflow to trigger"
+            },
+            ref: {
+              type: "string",
+              description: "The git reference to trigger the workflow on (default: main)"
+            },
+            inputs: {
+              type: "object",
+              description: "Inputs to pass to the workflow (must match the workflow's defined inputs)"
+            },
+            token: {
+              type: "string",
+              description: "GitHub personal access token (must have workflow scope)"
+            }
+          },
+          required: ["owner", "repo", "workflow_id"]
+        }
       }
     ]
   };
@@ -234,6 +268,110 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
  * @param token Optional GitHub personal access token
  * @returns List of GitHub Action workflows
  */
+/**
+ * Helper function to trigger a GitHub workflow via workflow_dispatch event.
+ * @param owner Repository owner (username or organization)
+ * @param repo Repository name
+ * @param workflow_id The ID or filename of the workflow to trigger
+ * @param ref The git reference to trigger the workflow on (default: main)
+ * @param inputs Inputs to pass to the workflow
+ * @param token GitHub personal access token (must have workflow scope)
+ * @returns The workflow run information
+ */
+async function triggerGitHubAction(owner: string, repo: string, workflow_id: string, ref: string = 'main', inputs: Record<string, any> = {}, token?: string) {
+  // Use provided token or fall back to config token
+  const authToken = token || config.githubToken;
+  
+  if (!authToken) {
+    throw new Error('GitHub token is required to trigger workflow dispatch events');
+  }
+  
+  try {
+    const headers: Record<string, string> = {
+      'Accept': 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+      'Authorization': `Bearer ${authToken}`
+    };
+    
+    // Trigger the workflow_dispatch event
+    const response = await axios.post(
+      `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflow_id}/dispatches`,
+      {
+        ref: ref,
+        inputs: inputs
+      },
+      { headers }
+    );
+    
+    // The workflow_dispatch endpoint returns 204 No Content when successful
+    if (response.status === 204) {
+      // Add a delay to allow the workflow to be created
+      // GitHub needs a bit of time to process the request and create the run
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      // Get the latest workflow run to return more useful information
+      const runsResponse = await axios.get(
+        `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflow_id}/runs?per_page=5`,
+        { headers }
+      );
+      
+      if (runsResponse.data.workflow_runs && runsResponse.data.workflow_runs.length > 0) {
+        // Find the most recent run that was created around the time of our request
+        const now = new Date();
+        const recentRuns = runsResponse.data.workflow_runs
+          .filter((run: any) => {
+            const runDate = new Date(run.created_at);
+            // Consider runs created in the last 10 seconds
+            return (now.getTime() - runDate.getTime()) < 10000;
+          })
+          .sort((a: any, b: any) => {
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          });
+        
+        const latestRun = recentRuns.length > 0 ? recentRuns[0] : runsResponse.data.workflow_runs[0];
+        
+        return {
+          success: true,
+          message: 'Workflow dispatch event triggered successfully',
+          run: {
+            id: latestRun.id,
+            url: latestRun.html_url,
+            status: latestRun.status,
+            conclusion: latestRun.conclusion,
+            created_at: latestRun.created_at,
+            triggered_by: latestRun.triggering_actor?.login || 'API'
+          }
+        };
+      }
+      
+      // If we couldn't find a recent run, it might still be creating
+      return {
+        success: true,
+        message: 'Workflow dispatch event triggered successfully',
+        note: 'Workflow run information not available yet. The run is being created. Check the repository Actions tab for status in a few seconds.'
+      };
+    }
+    
+    throw new Error(`Unexpected response status: ${response.status}`);
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const statusCode = error.response?.status;
+      const errorMessage = error.response?.data?.message || error.message;
+      
+      if (statusCode === 404) {
+        throw new Error(`Workflow not found or no permission: ${errorMessage}`);
+      } else if (statusCode === 422) {
+        throw new Error(`Validation failed: ${errorMessage}. This could be due to invalid inputs or the workflow doesn't support manual triggers.`);
+      } else if (statusCode === 401 || statusCode === 403) {
+        throw new Error(`Authentication failed: ${errorMessage}. Make sure your token has the 'workflow' scope.`);
+      }
+      
+      throw new Error(`GitHub API error: ${statusCode} - ${errorMessage}`);
+    }
+    throw error;
+  }
+}
+
 /**
  * Helper function to fetch a specific GitHub Action's metadata, including inputs and their requirements.
  * @param owner Owner of the action (username or organization)
@@ -434,6 +572,35 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       } catch (error) {
         if (error instanceof Error) {
           throw new Error(`Failed to get GitHub Action details: ${error.message}`);
+        }
+        throw error;
+      }
+    }
+    
+    case "trigger_github_action": {
+      const owner = String(request.params.arguments?.owner);
+      const repo = String(request.params.arguments?.repo);
+      const workflow_id = String(request.params.arguments?.workflow_id);
+      const ref = request.params.arguments?.ref ? String(request.params.arguments?.ref) : 'main';
+      const inputs = request.params.arguments?.inputs || {};
+      const token = request.params.arguments?.token ? String(request.params.arguments?.token) : undefined;
+      
+      if (!owner || !repo || !workflow_id) {
+        throw new Error("Owner, repo, and workflow_id are required");
+      }
+
+      try {
+        const result = await triggerGitHubAction(owner, repo, workflow_id, ref, inputs, token);
+        
+        return {
+          content: [{
+            type: "text",
+            text: JSON.stringify(result, null, 2)
+          }]
+        };
+      } catch (error) {
+        if (error instanceof Error) {
+          throw new Error(`Failed to trigger GitHub Action: ${error.message}`);
         }
         throw error;
       }
