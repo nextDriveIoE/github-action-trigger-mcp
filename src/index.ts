@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 
 /**
- * This is a template MCP server that implements a simple notes system.
+ * MCP server that implements a simple notes system and GitHub Actions tools.
  * It demonstrates core MCP concepts like resources and tools by allowing:
  * - Listing notes as resources
  * - Reading individual notes
  * - Creating new notes via a tool
  * - Summarizing all notes via a prompt
+ * - Getting available GitHub Actions for a repository
  */
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
@@ -19,6 +20,20 @@ import {
   ListPromptsRequestSchema,
   GetPromptRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
+import axios from "axios";
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
+
+/**
+ * Custom logger that uses stderr to avoid interfering with MCP JSON responses.
+ */
+const logger = {
+  info: (...args: any[]) => console.error('[INFO]', ...args),
+  error: (...args: any[]) => console.error('[ERROR]', ...args),
+  warn: (...args: any[]) => console.error('[WARN]', ...args),
+  debug: (...args: any[]) => console.error('[DEBUG]', ...args)
+};
 
 /**
  * Type alias for a note object.
@@ -35,8 +50,47 @@ const notes: { [id: string]: Note } = {
 };
 
 /**
+ * Configuration interface for the server.
+ */
+interface Config {
+  githubToken?: string;
+}
+
+/**
+ * Load configuration from file or environment variables.
+ * Priority: Environment variables > Config file
+ */
+function loadConfig(): Config {
+  const config: Config = {};
+
+  // Check environment variables first
+  if (process.env.GITHUB_TOKEN) {
+    config.githubToken = process.env.GITHUB_TOKEN;
+    return config;
+  }
+
+  // Try to load from config file if environment variable is not set
+  try {
+    const configPath = path.join(os.homedir(), '.github-action-trigger-mcp', 'config.json');
+    if (fs.existsSync(configPath)) {
+      const fileConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      if (fileConfig.githubToken) {
+        config.githubToken = fileConfig.githubToken;
+      }
+    }
+  } catch (error) {
+    logger.error('Failed to load config file:', error);
+  }
+
+  return config;
+}
+
+// Load configuration
+const config = loadConfig();
+
+/**
  * Create an MCP server with capabilities for resources (to list/read notes),
- * tools (to create new notes), and prompts (to summarize notes).
+ * tools (to create new notes and get GitHub Actions), and prompts (to summarize notes).
  */
 const server = new Server(
   {
@@ -94,7 +148,7 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
 
 /**
  * Handler that lists available tools.
- * Exposes a single "create_note" tool that lets clients create new notes.
+ * Exposes a "create_note" tool and a "get_github_actions" tool.
  */
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
@@ -116,14 +170,102 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           },
           required: ["title", "content"]
         }
+      },
+      {
+        name: "get_github_actions",
+        description: "Get available GitHub Actions for a repository",
+        inputSchema: {
+          type: "object",
+          properties: {
+            owner: {
+              type: "string",
+              description: "Owner of the repository (username or organization)"
+            },
+            repo: {
+              type: "string",
+              description: "Name of the repository"
+            },
+            token: {
+              type: "string",
+              description: "GitHub personal access token (optional)"
+            }
+          },
+          required: ["owner", "repo"]
+        }
       }
     ]
   };
 });
 
 /**
- * Handler for the create_note tool.
- * Creates a new note with the provided title and content, and returns success message.
+ * Helper function to fetch GitHub Actions workflows from a repository.
+ * @param owner Repository owner (username or organization)
+ * @param repo Repository name
+ * @param token Optional GitHub personal access token
+ * @returns List of GitHub Action workflows
+ */
+async function getGitHubActions(owner: string, repo: string, token?: string) {
+  // Use provided token or fall back to config token
+  const authToken = token || config.githubToken;
+  try {
+    const headers: Record<string, string> = {
+      'Accept': 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28'
+    };
+
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
+
+    // Fetch workflows from the GitHub API
+    const workflowsResponse = await axios.get(
+      `https://api.github.com/repos/${owner}/${repo}/actions/workflows`,
+      { headers }
+    );
+
+    // Extract workflow information
+    const workflows = workflowsResponse.data.workflows.map((workflow: any) => ({
+      id: workflow.id,
+      name: workflow.name,
+      path: workflow.path,
+      state: workflow.state,
+      url: workflow.html_url
+    }));
+
+    // For each workflow, get the associated jobs
+    const workflowDetails = await Promise.all(
+      workflows.map(async (workflow: any) => {
+        try {
+          // Get the raw workflow file content
+          const contentResponse = await axios.get(
+            `https://api.github.com/repos/${owner}/${repo}/contents/${workflow.path}`,
+            { headers }
+          );
+
+          const content = Buffer.from(contentResponse.data.content, 'base64').toString('utf-8');
+
+          return {
+            ...workflow,
+            content
+          };
+        } catch (error) {
+          // If we can't get the content, just return the workflow without it
+          return workflow;
+        }
+      })
+    );
+
+    return workflowDetails;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      throw new Error(`GitHub API error: ${error.response?.status} ${error.response?.statusText} - ${error.response?.data?.message || error.message}`);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Handler for tools including create_note and get_github_actions.
  */
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   switch (request.params.name) {
@@ -143,6 +285,32 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           text: `Created note ${id}: ${title}`
         }]
       };
+    }
+
+    case "get_github_actions": {
+      const owner = String(request.params.arguments?.owner);
+      const repo = String(request.params.arguments?.repo);
+      const token = request.params.arguments?.token ? String(request.params.arguments?.token) : undefined;
+
+      if (!owner || !repo) {
+        throw new Error("Owner and repo are required");
+      }
+
+      try {
+        const actions = await getGitHubActions(owner, repo, token);
+
+        return {
+          content: [{
+            type: "text",
+            text: JSON.stringify(actions, null, 2)
+          }]
+        };
+      } catch (error) {
+        if (error instanceof Error) {
+          throw new Error(`Failed to get GitHub Actions: ${error.message}`);
+        }
+        throw error;
+      }
     }
 
     default:
@@ -212,11 +380,29 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
  * This allows the server to communicate via standard input/output streams.
  */
 async function main() {
+  // Ensure the config directory exists
+  try {
+    const configDir = path.join(os.homedir(), '.github-action-trigger-mcp');
+    if (!fs.existsSync(configDir)) {
+      fs.mkdirSync(configDir, { recursive: true });
+      // Create a template config file if it doesn't exist
+      const configPath = path.join(configDir, 'config.json');
+      if (!fs.existsSync(configPath)) {
+        fs.writeFileSync(configPath, JSON.stringify({
+          githubToken: 'YOUR_GITHUB_TOKEN_HERE' // replace with your GitHub token
+        }, null, 2), 'utf-8');
+        logger.info(`Created template config file at ${configPath}`);
+      }
+    }
+  } catch (error) {
+    logger.error('Failed to create config directory:', error);
+  }
+
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }
 
 main().catch((error) => {
-  console.error("Server error:", error);
+  logger.error("Server error:", error);
   process.exit(1);
 });
