@@ -80,7 +80,7 @@ if (process.env.GITHUB_PERSONAL_ACCESS_TOKEN) {
 
   // Try to load from config file if environment variable is not set
   try {
-    const configPath = path.join(os.homedir(), '.nextdriveioe-github-action-trigger-mcp', 'config.json');
+    const configPath = path.join(os.homedir(), '.nextdrive-github-action-trigger-mcp', 'config.json');
     if (fs.existsSync(configPath)) {
       const fileConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
       if (fileConfig.githubToken) {
@@ -103,7 +103,7 @@ const config = loadConfig();
  */
 const server = new Server(
   {
-    name: "@nextdriveioe/github-action-trigger-mcp",
+    name: "@nextdrive/github-action-trigger-mcp",
     version: "0.1.0",
   },
   {
@@ -684,7 +684,7 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
 async function main() {
   // Ensure the config directory exists
   try {
-    const configDir = path.join(os.homedir(), '.nextdriveioe-github-action-trigger-mcp');
+    const configDir = path.join(os.homedir(), '.nextdrive-github-action-trigger-mcp');
     if (!fs.existsSync(configDir)) {
       fs.mkdirSync(configDir, { recursive: true });
       // Create a template config file if it doesn't exist

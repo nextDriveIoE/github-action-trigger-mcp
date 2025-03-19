@@ -57,7 +57,7 @@ A Model Context Protocol server for GitHub Actions integration
       "command": "npx",
       "args": [
         "-y",
-        "@nextdriveioe/github-action-trigger-mcp"
+        "@nextdrive/github-action-trigger-mcp"
       ],
       "env": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "your_github_token_here"
@@ -79,7 +79,7 @@ A Model Context Protocol server for GitHub Actions integration
 
 1. 安裝包：
 ```bash
-npm install -g @nextdriveioe/github-action-trigger-mcp
+npm install -g @nextdrive/github-action-trigger-mcp
 ```
 
 2. 在 Claude Desktop 配置中使用：
@@ -91,7 +91,7 @@ npm install -g @nextdriveioe/github-action-trigger-mcp
 {
   "mcpServers": {
     "github-action-trigger-mcp": {
-      "command": "@nextdriveioe/github-action-trigger-mcp",
+      "command": "@nextdrive/github-action-trigger-mcp",
       "env": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "your_github_token_here"
       }
@@ -131,7 +131,7 @@ set GITHUB_TOKEN=your_github_token
 編輯配置文件：
 
 ```
-~/.nextdriveioe-github-action-trigger-mcp/config.json
+~/.nextdrive-github-action-trigger-mcp/config.json
 ```
 
 設置您的 GitHub 令牌：
@@ -175,7 +175,7 @@ Inspector 將提供一個 URL 以在您的瀏覽器中訪問調試工具。
 
 如果您想要將此包發布到 npm，請按照以下步驟操作：
 
-1. 確保您已登錄到 npm，並且有權限發布到 `@nextdriveioe` 組織：
+1. 確保您已登錄到 npm，並且有權限發布到 `@nextdrive` 組織：
    ```bash
    npm login
    ```
@@ -190,7 +190,7 @@ Inspector 將提供一個 URL 以在您的瀏覽器中訪問調試工具。
    npm publish --access public
    ```
 
-發布後，任何人都可以使用 `npx @nextdriveioe/github-action-trigger-mcp` 命令執行此工具，或在 Claude Desktop 配置中使用它。
+發布後，任何人都可以使用 `npx @nextdrive/github-action-trigger-mcp` 命令執行此工具，或在 Claude Desktop 配置中使用它。
 
 ## 使用示例
 
