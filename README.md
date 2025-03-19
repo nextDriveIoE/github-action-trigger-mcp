@@ -76,7 +76,7 @@ npm run watch
 ```json
 {
   "mcpServers": {
-    "github-action-trigger-mcp": {
+    "@nextdriveIoE/github-action-trigger-mcp": {
       "command": "node",
       "args": [
         "/path/to/github-action-trigger-mcp/build/index.js"
@@ -97,7 +97,7 @@ npm run watch
 ```json
 {
   "mcpServers": {
-    "github-action-trigger-mcp": {
+    "@nextdriveIoE/github-action-trigger-mcp": {
       "command": "node",
       "args": [
         "/path/to/github-action-trigger-mcp/build/index.js"
@@ -129,7 +129,7 @@ set GITHUB_TOKEN=your_github_token
 編輯配置文件：
 
 ```
-~/.github-action-trigger-mcp/config.json
+~/.nextdriveIoE-github-action-trigger-mcp/config.json
 ```
 
 設置您的 GitHub 令牌：

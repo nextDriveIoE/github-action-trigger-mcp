@@ -1,11 +1,11 @@
 {
-  "name": "github-action-trigger-mcp",
+  "name": "@nextdriveIoE/github-action-trigger-mcp",
   "version": "0.1.0",
   "description": "A Model Context Protocol server",
   "private": true,
   "type": "module",
   "bin": {
-    "github-action-trigger-mcp": "./build/index.js"
+    "@nextdriveIoE/github-action-trigger-mcp": "./build/index.js"
   },
   "files": [
     "build"
