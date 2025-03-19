@@ -61,11 +61,20 @@ interface Config {
  * Priority: Environment variables > Config file
  */
 function loadConfig(): Config {
-  const config: Config = {};
+const config: Config = {};
 
-  // Check environment variables first
+// Check environment variables with priority
+// 1. GITHUB_PERSONAL_ACCESS_TOKEN - 專為 Claude Desktop 配置設計
+// 2. GITHUB_TOKEN - 傳統的環境變量名稱
+if (process.env.GITHUB_PERSONAL_ACCESS_TOKEN) {
+  config.githubToken = process.env.GITHUB_PERSONAL_ACCESS_TOKEN;
+    logger.info('Using GitHub token from GITHUB_PERSONAL_ACCESS_TOKEN environment variable');
+    return config;
+  }
+  
   if (process.env.GITHUB_TOKEN) {
     config.githubToken = process.env.GITHUB_TOKEN;
+    logger.info('Using GitHub token from GITHUB_TOKEN environment variable');
     return config;
   }
 

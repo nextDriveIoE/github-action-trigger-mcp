@@ -88,9 +88,31 @@ npm run watch
 
 ### GitHub 令牌配置
 
-如果您需要訪問私有倉庫或想要增加 API 請求限制，您可以配置 GitHub 個人訪問令牌。有兩種方式：
+如果您需要訪問私有倉庫或想要增加 API 請求限制，您可以配置 GitHub 個人訪問令牌。有以下幾種方式：
 
-#### 方法一：環境變數
+#### 方法一（推薦）：Claude Desktop 配置文件中直接設置
+
+在 Claude Desktop 配置文件中通過 `env` 字段直接設置令牌（最簡單的方法）：
+
+```json
+{
+  "mcpServers": {
+    "github-action-trigger-mcp": {
+      "command": "node",
+      "args": [
+        "/path/to/github-action-trigger-mcp/build/index.js"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "your_github_token_here"
+      }
+    }
+  }
+}
+```
+
+這是推薦的方法，因為它簡單且只需要設置一次。
+
+#### 方法二：全局環境變數
 
 設置 `GITHUB_TOKEN` 環境變數：
 
@@ -102,7 +124,7 @@ export GITHUB_TOKEN=your_github_token
 set GITHUB_TOKEN=your_github_token
 ```
 
-#### 方法二：配置文件
+#### 方法三：本地配置文件
 
 編輯配置文件：
 
