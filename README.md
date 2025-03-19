@@ -20,10 +20,17 @@ A Model Context Protocol server
 - `create_note` - 創建新的文本筆記
   - 以標題和內容作為必需參數
   - 將筆記存儲在服務器狀態中
-- `get_github_actions` - 獲取 GitHub 倉庫上可用的 GitHub Actions
+- `get_github_actions` - 獲取 GitHub 倉庫上可用的 GitHub Actions（工作流程）
   - 必需參數：`owner`（倉庫擁有者，用戶名或組織）和 `repo`（倉庫名稱）
   - 可選參數：`token`（GitHub 個人訪問令牌，用於訪問私有倉庫或提高 API 速率限制）
   - 返回包含工作流程 ID、名稱、路徑、狀態、URL 和內容的 JSON 數據
+- `get_github_action` - 獲取特定 GitHub Action 的詳細信息，包括輸入參數及其要求
+  - 必需參數：`owner`（Action 擁有者，用戶名或組織）和 `repo`（Action 的倉庫名稱）
+  - 可選參數：
+    - `path`：Action 定義文件的路徑（默認為 'action.yml'）
+    - `ref`：Git 引用（分支、標籤或提交 SHA，默認為 'main'）
+    - `token`：GitHub 個人訪問令牌（可選）
+  - 返回 Action 的詳細信息，包括名稱、描述、作者、輸入參數（及其是否必填）等
 
 ### 提示
 - `summarize_notes` - 生成所有存儲筆記的摘要
@@ -115,7 +122,7 @@ Inspector 將提供一個 URL 以在您的瀏覽器中訪問調試工具。
 
 ## 使用示例
 
-### 獲取 GitHub Actions
+### 獲取 GitHub Actions 列表
 
 使用 `get_github_actions` 工具獲取倉庫的 GitHub Actions：
 
@@ -149,4 +156,60 @@ Inspector 將提供一個 URL 以在您的瀏覽器中訪問調試工具。
     "content": "name: CI\n\non:\n  push:\n    branches: [ main ]\n  pull_request:\n    branches: [ main ]\n\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n    - uses: actions/checkout@v2\n    - name: Setup Node.js\n      uses: actions/setup-node@v2\n      with:\n        node-version: 16.x\n    - name: Install dependencies\n      run: npm ci\n    - name: Build\n      run: npm run build\n    - name: Test\n      run: npm test\n"
   }
 ]
+```
+
+### 獲取特定 GitHub Action 詳細信息
+
+使用 `get_github_action` 工具獲取特定 Action 的詳細信息，包括其輸入參數和是否必填：
+
+```json
+{
+  "owner": "actions",
+  "repo": "checkout",
+  "ref": "v4"
+}
+```
+
+返回示例：
+
+```json
+{
+  "name": "Checkout",
+  "description": "Check out a Git repository at a particular version",
+  "author": "GitHub",
+  "inputs": [
+    {
+      "name": "repository",
+      "description": "Repository name with owner. For example, actions/checkout",
+      "default": "",
+      "required": false
+    },
+    {
+      "name": "ref",
+      "description": "The branch, tag or SHA to checkout. When checking out the repository that triggered a workflow, this defaults to the reference or SHA for that event. Otherwise, uses the default branch.",
+      "default": "",
+      "required": false
+    },
+    {
+      "name": "token",
+      "description": "Personal access token (PAT) used to fetch the repository. The PAT is configured with the local git config, which enables your scripts to run authenticated git commands. The post-job step removes the PAT.",
+      "default": "${{ github.token }}",
+      "required": false
+    },
+    {
+      "name": "ssh-key",
+      "description": "SSH key used to fetch the repository. The SSH key is configured with the local git config, which enables your scripts to run authenticated git commands. The post-job step removes the SSH key.",
+      "default": "",
+      "required": false
+    }
+  ],
+  "runs": {
+    "using": "node20",
+    "main": "dist/index.js"
+  },
+  "branding": {
+    "icon": "download",
+    "color": "blue"
+  }
+}
 ```

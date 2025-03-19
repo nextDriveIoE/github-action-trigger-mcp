@@ -19,7 +19,8 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "0.6.0",
     "octokit": "^3.1.2",
-    "axios": "^1.6.2"
+    "axios": "^1.6.2",
+    "js-yaml": "^4.1.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.24",

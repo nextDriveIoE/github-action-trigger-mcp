@@ -192,6 +192,36 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           },
           required: ["owner", "repo"]
         }
+      },
+      {
+        name: "get_github_action",
+        description: "Get detailed information about a specific GitHub Action, including inputs and their requirements",
+        inputSchema: {
+          type: "object",
+          properties: {
+            owner: {
+              type: "string",
+              description: "Owner of the action (username or organization)"
+            },
+            repo: {
+              type: "string",
+              description: "Repository name of the action"
+            },
+            path: {
+              type: "string",
+              description: "Path to the action.yml or action.yaml file (usually just 'action.yml')"
+            },
+            ref: {
+              type: "string",
+              description: "Git reference (branch, tag, or commit SHA, default: main)"
+            },
+            token: {
+              type: "string",
+              description: "GitHub personal access token (optional)"
+            }
+          },
+          required: ["owner", "repo"]
+        }
       }
     ]
   };
@@ -204,6 +234,74 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
  * @param token Optional GitHub personal access token
  * @returns List of GitHub Action workflows
  */
+/**
+ * Helper function to fetch a specific GitHub Action's metadata, including inputs and their requirements.
+ * @param owner Owner of the action (username or organization)
+ * @param repo Repository name of the action
+ * @param path Path to the action.yml or action.yaml file (default: 'action.yml')
+ * @param ref Git reference (branch, tag, or commit SHA, default: main)
+ * @param token Optional GitHub personal access token
+ * @returns Detailed information about the GitHub Action
+ */
+async function getGitHubAction(owner: string, repo: string, path: string = 'action.yml', ref: string = 'main', token?: string) {
+  // Use provided token or fall back to config token
+  const authToken = token || config.githubToken;
+  
+  try {
+    const headers: Record<string, string> = {
+      'Accept': 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28'
+    };
+    
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
+    
+    // First, try to get the action.yml file content
+    const contentResponse = await axios.get(
+      `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${ref}`,
+      { headers }
+    );
+    
+    if (!contentResponse.data.content) {
+      throw new Error(`Could not find ${path} file in ${owner}/${repo}`);
+    }
+    
+    // Decode the base64 content
+    const content = Buffer.from(contentResponse.data.content, 'base64').toString('utf-8');
+    
+    // Parse the YAML content
+    const yaml = require('js-yaml');
+    const actionDefinition = yaml.load(content);
+    
+    // Extract and format the inputs information
+    const inputs = actionDefinition.inputs || {};
+    const formattedInputs = Object.entries(inputs).map(([name, config]: [string, any]) => ({
+      name,
+      description: config.description || '',
+      default: config.default,
+      required: config.required === true,
+      deprecationMessage: config.deprecationMessage,
+    }));
+    
+    return {
+      name: actionDefinition.name || '',
+      description: actionDefinition.description || '',
+      author: actionDefinition.author || '',
+      inputs: formattedInputs,
+      runs: actionDefinition.runs,
+      branding: actionDefinition.branding,
+      // Include original content for reference
+      originalYaml: content
+    };
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      throw new Error(`GitHub API error: ${error.response?.status} ${error.response?.statusText} - ${error.response?.data?.message || error.message}`);
+    }
+    throw error;
+  }
+}
+
 async function getGitHubActions(owner: string, repo: string, token?: string) {
   // Use provided token or fall back to config token
   const authToken = token || config.githubToken;
@@ -288,26 +386,54 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
 
     case "get_github_actions": {
+    const owner = String(request.params.arguments?.owner);
+    const repo = String(request.params.arguments?.repo);
+    const token = request.params.arguments?.token ? String(request.params.arguments?.token) : undefined;
+    
+    if (!owner || !repo) {
+    throw new Error("Owner and repo are required");
+    }
+
+    try {
+    const actions = await getGitHubActions(owner, repo, token);
+    
+    return {
+    content: [{
+    type: "text",
+    text: JSON.stringify(actions, null, 2)
+    }]
+    };
+    } catch (error) {
+    if (error instanceof Error) {
+    throw new Error(`Failed to get GitHub Actions: ${error.message}`);
+    }
+    throw error;
+    }
+    }
+    
+    case "get_github_action": {
       const owner = String(request.params.arguments?.owner);
       const repo = String(request.params.arguments?.repo);
+      const path = request.params.arguments?.path ? String(request.params.arguments?.path) : 'action.yml';
+      const ref = request.params.arguments?.ref ? String(request.params.arguments?.ref) : 'main';
       const token = request.params.arguments?.token ? String(request.params.arguments?.token) : undefined;
-
+      
       if (!owner || !repo) {
         throw new Error("Owner and repo are required");
       }
 
       try {
-        const actions = await getGitHubActions(owner, repo, token);
-
+        const actionDetails = await getGitHubAction(owner, repo, path, ref, token);
+        
         return {
           content: [{
             type: "text",
-            text: JSON.stringify(actions, null, 2)
+            text: JSON.stringify(actionDetails, null, 2)
           }]
         };
       } catch (error) {
         if (error instanceof Error) {
-          throw new Error(`Failed to get GitHub Actions: ${error.message}`);
+          throw new Error(`Failed to get GitHub Action details: ${error.message}`);
         }
         throw error;
       }
