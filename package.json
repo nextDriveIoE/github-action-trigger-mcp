@@ -1,6 +1,6 @@
 {
   "name": "@nextdrive/github-action-trigger-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A Model Context Protocol server for GitHub Actions integration",
   "private": false,
   "type": "module",
