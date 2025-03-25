@@ -71,6 +71,28 @@ if (process.env.GITHUB_PERSONAL_ACCESS_TOKEN) {
       const fileConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
       if (fileConfig.githubToken) {
         config.githubToken = fileConfig.githubToken;
+      },
+      {
+        name: "get_github_release",
+        description: "Get the latest 2 releases from a GitHub repository",
+        inputSchema: {
+          type: "object",
+          properties: {
+            owner: {
+              type: "string",
+              description: "Owner of the repository (username or organization)"
+            },
+            repo: {
+              type: "string",
+              description: "Name of the repository"
+            },
+            token: {
+              type: "string",
+              description: "GitHub personal access token (optional)"
+            }
+          },
+          required: ["owner", "repo"]
+        }
       }
     }
   } catch (error) {
@@ -201,6 +223,28 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           },
           required: ["owner", "repo", "workflow_id"]
         }
+      },
+      {
+        name: "get_github_release",
+        description: "Get the latest 2 releases from a GitHub repository",
+        inputSchema: {
+          type: "object",
+          properties: {
+            owner: {
+              type: "string",
+              description: "Owner of the repository (username or organization)"
+            },
+            repo: {
+              type: "string",
+              description: "Name of the repository"
+            },
+            token: {
+              type: "string",
+              description: "GitHub personal access token (optional)"
+            }
+          },
+          required: ["owner", "repo"]
+        }
       }
     ]
   };
@@ -326,6 +370,82 @@ async function triggerGitHubAction(owner: string, repo: string, workflow_id: str
  * @param token Optional GitHub personal access token
  * @returns Detailed information about the GitHub Action
  */
+/**
+ * Helper function to fetch the latest releases from a GitHub repository.
+ * @param owner Repository owner (username or organization)
+ * @param repo Repository name
+ * @param token Optional GitHub personal access token
+ * @returns The latest 2 releases information
+ */
+async function getGitHubReleases(owner: string, repo: string, token?: string) {
+  // Use provided token or fall back to config token
+  const authToken = token || config.githubToken;
+  
+  try {
+    const headers: Record<string, string> = {
+      'Accept': 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28'
+    };
+    
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
+    
+    // Fetch releases from the GitHub API - limit to the latest 2
+    const releasesResponse = await axios.get(
+      `https://api.github.com/repos/${owner}/${repo}/releases?per_page=2`,
+      { headers }
+    );
+    
+    // Format the release information
+    const releases = releasesResponse.data.map((release: any) => {
+      // Extract asset information
+      const assets = release.assets.map((asset: any) => ({
+        name: asset.name,
+        size: asset.size,
+        download_count: asset.download_count,
+        browser_download_url: asset.browser_download_url,
+        created_at: asset.created_at,
+        updated_at: asset.updated_at
+      }));
+      
+      return {
+        id: release.id,
+        name: release.name || release.tag_name,
+        tag_name: release.tag_name,
+        published_at: release.published_at,
+        draft: release.draft,
+        prerelease: release.prerelease,
+        html_url: release.html_url,
+        body: release.body,
+        assets: assets,
+        author: {
+          login: release.author.login,
+          html_url: release.author.html_url
+        }
+      };
+    });
+    
+    return {
+      count: releases.length,
+      releases: releases
+    };
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      // Handle 404 (no releases)
+      if (error.response?.status === 404) {
+        return {
+          count: 0,
+          releases: [],
+          message: 'No releases found for this repository'
+        };
+      }
+      throw new Error(`GitHub API error: ${error.response?.status} ${error.response?.statusText} - ${error.response?.data?.message || error.message}`);
+    }
+    throw error;
+  }
+}
+
 async function getGitHubAction(owner: string, repo: string, path: string = 'action.yml', ref: string = 'main', token?: string) {
   // Use provided token or fall back to config token
   const authToken = token || config.githubToken;
@@ -529,6 +649,32 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       } catch (error) {
         if (error instanceof Error) {
           throw new Error(`Failed to trigger GitHub Action: ${error.message}`);
+        }
+        throw error;
+      }
+    }
+    
+    case "get_github_release": {
+      const owner = String(request.params.arguments?.owner);
+      const repo = String(request.params.arguments?.repo);
+      const token = request.params.arguments?.token ? String(request.params.arguments?.token) : undefined;
+      
+      if (!owner || !repo) {
+        throw new Error("Owner and repo are required");
+      }
+
+      try {
+        const releases = await getGitHubReleases(owner, repo, token);
+        
+        return {
+          content: [{
+            type: "text",
+            text: JSON.stringify(releases, null, 2)
+          }]
+        };
+      } catch (error) {
+        if (error instanceof Error) {
+          throw new Error(`Failed to get GitHub releases: ${error.message}`);
         }
         throw error;
       }
