@@ -71,28 +71,6 @@ if (process.env.GITHUB_PERSONAL_ACCESS_TOKEN) {
       const fileConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
       if (fileConfig.githubToken) {
         config.githubToken = fileConfig.githubToken;
-      },
-      {
-        name: "get_github_release",
-        description: "Get the latest 2 releases from a GitHub repository",
-        inputSchema: {
-          type: "object",
-          properties: {
-            owner: {
-              type: "string",
-              description: "Owner of the repository (username or organization)"
-            },
-            repo: {
-              type: "string",
-              description: "Name of the repository"
-            },
-            token: {
-              type: "string",
-              description: "GitHub personal access token (optional)"
-            }
-          },
-          required: ["owner", "repo"]
-        }
       }
     }
   } catch (error) {
