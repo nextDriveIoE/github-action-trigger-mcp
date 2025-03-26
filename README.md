@@ -1,54 +1,54 @@
-# github-action-trigger-mcp MCP Server
+# GitHub Action Trigger MCP Server
 
-A Model Context Protocol server for GitHub Actions integration
+A Model Context Protocol server for GitHub Actions integration.
 
-這是一個基於 TypeScript 的 MCP 服務器，專為 GitHub Actions 整合設計。它提供了下列功能：
+## Overview
 
-- 用於獲取 GitHub 倉庫可用 GitHub Actions 的工具
-- 用於獲取特定 GitHub Action 詳細信息的工具
-- 用於觸發 GitHub 工作流程的工具
-- 簡單的筆記功能用於記錄和摘要
+This is a TypeScript-based MCP server designed for GitHub Actions integration. It provides the following features:
 
-## 功能
+- Tool for fetching available GitHub Actions from a repository
+- Tool for getting detailed information about a specific GitHub Action
+- Tool for triggering GitHub workflow dispatch events
+- Tool for fetching the latest releases from a GitHub repository
 
-### 工具
-- `get_github_actions` - 獲取 GitHub 倉庫上可用的 GitHub Actions（工作流程）
-  - 必需參數：`owner`（倉庫擁有者，用戶名或組織）和 `repo`（倉庫名稱）
-  - 可選參數：`token`（GitHub 個人訪問令牌，用於訪問私有倉庫或提高 API 速率限制）
-  - 返回包含工作流程 ID、名稱、路徑、狀態、URL 和內容的 JSON 數據
-- `get_github_action` - 獲取特定 GitHub Action 的詳細信息，包括輸入參數及其要求
-  - 必需參數：`owner`（Action 擁有者，用戶名或組織）和 `repo`（Action 的倉庫名稱）
-  - 可選參數：
-    - `path`：Action 定義文件的路徑（默認為 'action.yml'）
-    - `ref`：Git 引用（分支、標籤或提交 SHA，默認為 'main'）
-    - `token`：GitHub 個人訪問令牌（可選）
-  - 返回 Action 的詳細信息，包括名稱、描述、作者、輸入參數（及其是否必填）等
-- `trigger_github_action` - 觸發 GitHub 工作流程並傳遞相關參數
-  - 必需參數：
-    - `owner`：倉庫擁有者（用戶名或組織）
-    - `repo`：倉庫名稱
-    - `workflow_id`：要觸發的工作流程 ID 或文件名
-  - 可選參數：
-    - `ref`：觸發工作流程的 Git 引用（默認為 'main'）
-    - `inputs`：傳遞給工作流程的輸入參數（必須匹配工作流程定義的輸入）
-    - `token`：GitHub 個人訪問令牌（必須具有 workflow 權限範圍）
-  - 返回工作流程運行信息，包括狀態、URL 等
-- `create_note` - 創建新的文本筆記
-  - 以標題和內容作為必需參數
-  - 將筆記存儲在服務器狀態中
+## Features
 
-### 資源
-- 通過 `note://` URI 列出和訪問筆記
-- 每個筆記都有標題、內容和元數據
+### Tools
 
-### 提示
-- `summarize_notes` - 生成所有存儲筆記的摘要
+- `get_github_actions` - Get available GitHub Actions for a repository
+  - Required parameters: `owner` (repository owner, username or organization) and `repo` (repository name)
+  - Optional parameters: `token` (GitHub personal access token, for accessing private repositories or increasing API rate limits)
+  - Returns JSON data with workflow ID, name, path, state, URL, and content
 
-## 安裝
+- `get_github_action` - Get detailed information about a specific GitHub Action, including inputs and their requirements
+  - Required parameters: `owner` (Action owner, username or organization) and `repo` (repository name of the action)
+  - Optional parameters:
+    - `path`: Path to the action definition file (default: 'action.yml')
+    - `ref`: Git reference (branch, tag, or commit SHA, default: 'main')
+    - `token`: GitHub personal access token (optional)
+  - Returns detailed information about the Action, including name, description, author, inputs (and whether they're required), etc.
 
-### 推薦安裝方式：使用 npx
+- `trigger_github_action` - Trigger a GitHub workflow and pass relevant parameters
+  - Required parameters:
+    - `owner`: Repository owner (username or organization)
+    - `repo`: Repository name
+    - `workflow_id`: The ID or filename of the workflow to trigger
+  - Optional parameters:
+    - `ref`: The git reference to trigger the workflow on (default: 'main')
+    - `inputs`: Inputs to pass to the workflow (must match the workflow's defined inputs)
+    - `token`: GitHub personal access token (must have the workflow scope)
+  - Returns workflow run information, including status, URL, etc.
 
-最簡單的安裝和使用方法是通過 Claude Desktop 配置文件中的 `npx` 命令直接引用，無需手動安裝到本地：
+- `get_github_release` - Get the latest 2 releases from a GitHub repository
+  - Required parameters: `owner` (repository owner, username or organization) and `repo` (repository name)
+  - Optional parameters: `token` (GitHub personal access token, optional)
+  - Returns information about the latest 2 releases
+
+## Installation
+
+### Recommended Installation: Using npx
+
+The simplest way to install and use is via the `npx` command in your Claude Desktop configuration file without manual local installation:
 
 ```json
 {
@@ -67,25 +67,25 @@ A Model Context Protocol server for GitHub Actions integration
 }
 ```
 
-這種方法的優點：
-- 無需本地安裝包
-- 自動使用最新版本
-- 一次設置，立即可用
-- 內置了 GitHub 令牌配置
+Benefits of this method:
+- No local package installation required
+- Automatically uses the latest version
+- Set up once and ready to use
+- Built-in GitHub token configuration
 
-### 本地安裝方式
+### Local Installation
 
-若要手動安裝，請執行以下步驟：
+If you prefer to install manually, follow these steps:
 
-1. 安裝包：
+1. Install the package:
 ```bash
 npm install -g @nextdrive/github-action-trigger-mcp
 ```
 
-2. 在 Claude Desktop 配置中使用：
+2. Use in Claude Desktop configuration:
 
-在 MacOS 上：`~/Library/Application Support/Claude/claude_desktop_config.json`
-在 Windows 上：`%APPDATA%/Claude/claude_desktop_config.json`
+On MacOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
 
 ```json
 {
@@ -100,13 +100,13 @@ npm install -g @nextdrive/github-action-trigger-mcp
 }
 ```
 
-### GitHub 令牌配置
+### GitHub Token Configuration
 
-要訪問 GitHub API，特別是私有倉庫或觸發工作流程，您需要配置 GitHub 個人訪問令牌。有以下幾種配置方式：
+To access the GitHub API, especially for private repositories or workflow triggers, you need to configure a GitHub personal access token. There are several ways to do this:
 
-#### 方法一（推薦）：Claude Desktop 配置文件中直接設置
+#### Method 1 (Recommended): Direct Configuration in Claude Desktop
 
-在 Claude Desktop 配置文件中通過 `env` 字段直接設置令牌：
+Set the token directly in the Claude Desktop configuration file via the `env` field:
 
 ```json
 "env": {
@@ -114,27 +114,27 @@ npm install -g @nextdrive/github-action-trigger-mcp
 }
 ```
 
-#### 方法二：全局環境變數
+#### Method 2: Global Environment Variable
 
-設置 `GITHUB_TOKEN` 環境變數：
+Set the `GITHUB_TOKEN` environment variable:
 
 ```bash
-# 在 Linux/MacOS 上
+# On Linux/MacOS
 export GITHUB_TOKEN=your_github_token
 
-# 在 Windows 上
+# On Windows
 set GITHUB_TOKEN=your_github_token
 ```
 
-#### 方法三：本地配置文件
+#### Method 3: Local Configuration File
 
-編輯配置文件：
+Edit the configuration file:
 
 ```
 ~/.nextdrive-github-action-trigger-mcp/config.json
 ```
 
-設置您的 GitHub 令牌：
+Set your GitHub token:
 
 ```json
 {
@@ -142,72 +142,72 @@ set GITHUB_TOKEN=your_github_token
 }
 ```
 
-服務器第一次啟動時會自動創建此配置文件的模板。
+A template for this configuration file is automatically created the first time the server starts.
 
-## 開發
+## Development
 
-安裝依賴：
+Install dependencies:
 ```bash
 npm install
 ```
 
-構建服務器：
+Build the server:
 ```bash
 npm run build
 ```
 
-用於自動重建的開發：
+For automatic rebuilding during development:
 ```bash
 npm run watch
 ```
 
-### 調試
+### Debugging
 
-使用 MCP Inspector 進行調試：
+Use MCP Inspector for debugging:
 
 ```bash
 npm run inspector
 ```
 
-Inspector 將提供一個 URL 以在您的瀏覽器中訪問調試工具。
+The Inspector will provide a URL to access the debugging tools in your browser.
 
-## 發布到 npm
+## Publishing to npm
 
-如果您想要將此包發布到 npm，請按照以下步驟操作：
+If you want to publish this package to npm, follow these steps:
 
-1. 確保您已登錄到 npm，並且有權限發布到 `@nextdrive` 組織：
+1. Make sure you're logged in to npm and have permissions to publish to the `@nextdrive` organization:
    ```bash
    npm login
    ```
 
-2. 構建項目：
+2. Build the project:
    ```bash
    npm run build
    ```
 
-3. 發布到 npm（組織範圍的包預設為私有，使用 `--access public` 使其公開）：
+3. Publish to npm (organization-scoped packages are private by default, use `--access public` to make it public):
    ```bash
    npm publish --access public
    ```
 
-發布後，任何人都可以使用 `npx @nextdrive/github-action-trigger-mcp` 命令執行此工具，或在 Claude Desktop 配置中使用它。
+After publishing, anyone can run this tool using the `npx @nextdrive/github-action-trigger-mcp` command or use it in their Claude Desktop configuration.
 
-## 使用示例
+## Usage Examples
 
-### 獲取 GitHub Actions 列表
+### Getting a List of GitHub Actions
 
-使用 `get_github_actions` 工具獲取倉庫的 GitHub Actions：
+Use the `get_github_actions` tool to get GitHub Actions for a repository:
 
 ```json
 {
-  "owner": "用戶名或組織名",
-  "repo": "倉庫名稱"
+  "owner": "username-or-org",
+  "repo": "repository-name"
 }
 ```
 
-如果已配置默認令牌，在訪問私有倉庫時會自動使用它。
+If a default token is configured, it will be used automatically when accessing private repositories.
 
-返回示例：
+Example response:
 
 ```json
 [
@@ -222,9 +222,9 @@ Inspector 將提供一個 URL 以在您的瀏覽器中訪問調試工具。
 ]
 ```
 
-### 獲取特定 GitHub Action 詳細信息
+### Getting Detailed GitHub Action Information
 
-使用 `get_github_action` 工具獲取特定 Action 的詳細信息：
+Use the `get_github_action` tool to get detailed information about a specific Action:
 
 ```json
 {
@@ -234,7 +234,7 @@ Inspector 將提供一個 URL 以在您的瀏覽器中訪問調試工具。
 }
 ```
 
-返回示例：
+Example response:
 
 ```json
 {
@@ -262,14 +262,14 @@ Inspector 將提供一個 URL 以在您的瀏覽器中訪問調試工具。
 }
 ```
 
-### 觸發 GitHub 工作流程
+### Triggering a GitHub Workflow
 
-使用 `trigger_github_action` 工具觸發 GitHub 工作流程：
+Use the `trigger_github_action` tool to trigger a GitHub workflow:
 
 ```json
 {
-  "owner": "用戶名或組織名",
-  "repo": "倉庫名稱",
+  "owner": "username-or-org",
+  "repo": "repository-name",
   "workflow_id": "ci.yml",
   "inputs": {
     "deploy_environment": "production",
@@ -278,7 +278,7 @@ Inspector 將提供一個 URL 以在您的瀏覽器中訪問調試工具。
 }
 ```
 
-返回示例：
+Example response:
 
 ```json
 {
@@ -295,7 +295,67 @@ Inspector 將提供一個 URL 以在您的瀏覽器中訪問調試工具。
 }
 ```
 
-注意：觸發工作流程需要：
-1. 工作流程必須配置為支援 `workflow_dispatch` 事件
-2. GitHub 令牌必須具有 `workflow` 範圍的權限
-3. 傳遞的輸入參數必須與工作流程中定義的參數匹配
+Note: Triggering workflows requires:
+1. The workflow must be configured to support the `workflow_dispatch` event
+2. The GitHub token must have the `workflow` scope permission
+3. Input parameters passed must match those defined in the workflow
+
+### Getting Latest Releases
+
+Use the `get_github_release` tool to get the latest 2 releases from a repository:
+
+```json
+{
+  "owner": "username-or-org",
+  "repo": "repository-name"
+}
+```
+
+Example response:
+
+```json
+{
+  "count": 2,
+  "releases": [
+    {
+      "id": 12345678,
+      "name": "v1.0.0",
+      "tag_name": "v1.0.0",
+      "published_at": "2025-03-15T10:00:00Z",
+      "draft": false,
+      "prerelease": false,
+      "html_url": "https://github.com/owner/repo/releases/tag/v1.0.0",
+      "body": "Release notes for version 1.0.0",
+      "assets": [
+        {
+          "name": "app-v1.0.0.zip",
+          "size": 1234567,
+          "download_count": 42,
+          "browser_download_url": "https://github.com/owner/repo/releases/download/v1.0.0/app-v1.0.0.zip",
+          "created_at": "2025-03-15T10:05:00Z",
+          "updated_at": "2025-03-15T10:05:00Z"
+        }
+      ],
+      "author": {
+        "login": "username",
+        "html_url": "https://github.com/username"
+      }
+    },
+    {
+      "id": 87654321,
+      "name": "v0.9.0",
+      "tag_name": "v0.9.0",
+      "published_at": "2025-03-01T10:00:00Z",
+      "draft": false,
+      "prerelease": true,
+      "html_url": "https://github.com/owner/repo/releases/tag/v0.9.0",
+      "body": "Pre-release notes for version 0.9.0",
+      "assets": [],
+      "author": {
+        "login": "username",
+        "html_url": "https://github.com/username"
+      }
+    }
+  ]
+}
+```
