@@ -12,11 +12,8 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
   CallToolRequestSchema,
-  ListResourcesRequestSchema,
   ListToolsRequestSchema,
-  ReadResourceRequestSchema,
   ListPromptsRequestSchema,
-  GetPromptRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import axios from "axios";
 import * as fs from 'fs';
@@ -94,20 +91,12 @@ const server = new Server(
   },
   {
     capabilities: {
-    tools: {},
+      resources: {},
+      tools: {},
+      prompts: {}
     },
   }
 );
-
-/**
- * Handler for listing available resources.
- * No resources are currently available.
- */
-server.setRequestHandler(ListResourcesRequestSchema, async () => {
-  return {
-    resources: []
-  };
-});
 
 /**
  * Handler that lists available tools.
