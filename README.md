@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/nextdriveioe-github-action-trigger-mcp-badge.png)](https://mseep.ai/app/nextdriveioe-github-action-trigger-mcp)
+
 # GitHub Action Trigger MCP Server
 
 A Model Context Protocol server for GitHub Actions integration.
